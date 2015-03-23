@@ -6,12 +6,14 @@ from packages.rmconfig import configtool
 from constants import *
 from pyomxplayer import OMXPlayer
 import ImageIdentifier
+import psutil
 
 playerState = PLAYER_STOPPED
 cwd = os.getcwd()
 mediaPath = cwd + '/media/'
 mp_thread = None
 qt_proc = None
+qt_psproc = None
 identifyFlag = False
 previousState = None
 filenumber = None
@@ -100,6 +102,7 @@ class MediaPlayer(threading.Thread):
         self.mediaPath = mediaPath
 
     def processImagesOnce(self):
+        '''
         global playerState
         #imgInterval = str(self.config['image_interval'])
         imgInterval = self.config["image_interval"]-1
@@ -121,9 +124,12 @@ class MediaPlayer(threading.Thread):
                 time.sleep(1)
                 interval += 1
                 self.pauseevent.wait()
+        '''
+        self.processImagesWithQtViewer(0)
 
 
     def fbiImageLoop(self):
+        '''
         global playerState
         imgInterval = self.config['image_interval']
         blendInterval = str(self.config['image_blend_interval'])
@@ -144,17 +150,24 @@ class MediaPlayer(threading.Thread):
                     time.sleep(1)
                     interval += 1
                     self.pauseevent.wait()
+        '''
+        self.processImagesWithQtViewer(1)
 
-    def processImagesWithQtViewer(self):
+    def processImagesWithQtViewer(self, loops=None):
         global playerState
-        global qt_proc
-        imgInterval = str(self.config['image_interval'])
-        blendInterval = str(self.config['image_blend_interval'])
-        loops = 0
-        if self.config['repeat']:
-            loops = 1
+        global qt_proc, qt_psproc
+        imgInterval = self.config['image_interval'] * 1000
+        #blendInterval = str(self.config['image_blend_interval'])
+        blendInterval = 1000
+        if loops == None:
+            loops = 0
+            if self.config['repeat']:
+                loops = 1
         viewerState = ""
-        qt_proc = subprocess.Popen(["/home/pi/RPiTest2", "--interval", imgInterval, "--blend", blendInterval, "--loops", str(loops)], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+        curCmd = ["/home/pi/RPiTest2", "--interval", str(imgInterval), "--blend", str(blendInterval), "--loops", str(loops)]
+        print "CMD: " + str(curCmd)
+        qt_proc = subprocess.Popen(["/home/pi/RPiTest2", "--interval", str(imgInterval), "--blend", str(blendInterval), "--loops", str(loops)])
+        qt_proc.communicate()
 
 
 
@@ -449,6 +462,22 @@ def deleteFiles(files):
         play()
         time.sleep(1)
 
+def setQtViewerProcessReference():
+    global qt_psproc
+    ids = psutil.pids()
+    viewerId = None
+    for curId in ids:
+        try:
+            p = psutil.Process(curId)
+            print p.name()
+            if p.name() == "RPiTest2":
+                viewerId = curId
+        except:
+            print "No process for id " + str(curId)
+    if not viewerId == None:
+        print "Getting PSUTIL process reference to PID " + str(viewerId)
+        qt_psproc = psutil.Process(viewerId)
+
 def isImage(filename):
     return filename.endswith((SUPPORTED_IMAGE_EXTENSIONS))
 
@@ -477,6 +506,7 @@ def identifyDone():
 
 def play():
     global playerState
+    global qt_psproc
     playerState = PLAYER_STARTED
     global mp_thread
 
@@ -488,6 +518,9 @@ def play():
     if not mp_thread.pauseevent.is_set():
         mp_thread.pauseevent.set()
     print "Mediaplayer running in thread: ", mp_thread.name
+    setQtViewerProcessReference()
+    if not qt_psproc == None:
+        qt_psproc.resume()
 
 def startFileNumber(number):
     global playerState
@@ -505,6 +538,8 @@ def stop():
     global playerState
     global filenumber
     global videoPlaying
+    global qt_proc
+    global qt_psproc
     playerState = PLAYER_STOPPED
     mp_thread.runevent.clear()
     # check for fbi and omxplayer processes and terminate them
@@ -516,7 +551,9 @@ def stop():
         videoPlaying = False
 
     # stop qt viewer if currently running
+    #setQtViewerProcessReference()
     if not qt_proc == None:
+        #qt_psproc.terminate()
         qt_proc.kill()
         qt_proc = None
 
@@ -524,6 +561,7 @@ def pause():
     global videoPlaying
     global playerState
     global mp_thread
+    global qt_psproc
     print "Toggling paused state..."
     
     # toggle thread pause event
@@ -534,6 +572,12 @@ def pause():
     # toggle video playback --> same command will pause/resume
     if videoPlaying:
         subprocess.call(['/home/pi/raspmedia/Raspberry/scripts/dbuscontrol.sh', 'pause'])
+    setQtViewerProcessReference()
+    if not qt_psproc == None:
+        if mp_thread.pauseevent.is_set():
+            qt_psproc.resume()
+        else:
+            qt_psproc.suspend()
 
 def setState(state):
     global playerState
@@ -609,7 +653,8 @@ def prevFile():
     setMediaFileNumber(num)
 
 def main():
-    global cwd, mp_thread, playerState
+    global cwd, mp_thread, playerState, qt_proc
+    qt_proc = None
     print "PLAYER CWD: " + cwd
     if not mp_thread:
         mp_thread = MediaPlayer()

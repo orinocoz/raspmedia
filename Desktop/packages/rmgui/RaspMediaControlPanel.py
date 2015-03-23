@@ -160,20 +160,22 @@ class RaspMediaCtrlPanel(wx.Panel):
         stop = wx.Button(self,-1,label=tr("stop"))
         identify = wx.Button(self,-1,label=tr("identify"))
         identify.SetName("btn_identify")
-        reboot = wx.Button(self,-1,label=tr("reboot"), size = identify.GetSize())
-        reboot.SetName("btn_reboot")
-
+        #reboot = wx.Button(self,-1,label=tr("reboot"), size = identify.GetSize())
+        #reboot.SetName("btn_reboot")
+        pause = wx.Button(self,-1,label="Pause", size = identify.GetSize())
+        pause.SetName("btn_pause")
         self.Bind(wx.EVT_BUTTON, self.PlayClicked, play)
         self.Bind(wx.EVT_BUTTON, self.StopClicked, stop)
         self.Bind(wx.EVT_BUTTON, self.ButtonClicked, identify)
-        self.Bind(wx.EVT_BUTTON, self.ButtonClicked, reboot)
-
+        #self.Bind(wx.EVT_BUTTON, self.ButtonClicked, reboot)
+        self.Bind(wx.EVT_BUTTON, self.PauseClicked, pause)
         btnSizer = wx.GridBagSizer()
 
         btnSizer.Add(play,(0,0),flag=wx.LEFT|wx.TOP,border=5)
         btnSizer.Add(stop,(1,0),flag=wx.LEFT|wx.BOTTOM,border=5)
         btnSizer.Add(identify,(0,1),flag=wx.ALL,border=5)
-        btnSizer.Add(reboot,(1,1),flag=wx.LEFT|wx.RIGHT|wx.BOTTOM,border=5)
+        #btnSizer.Add(reboot,(1,1),flag=wx.LEFT|wx.RIGHT|wx.BOTTOM,border=5)
+        btnSizer.Add(pause,(1,1),flag=wx.LEFT|wx.RIGHT|wx.BOTTOM,border=5)
         ctrlSizer.Add(btnSizer)
 
         # disk space info
@@ -689,6 +691,10 @@ class RaspMediaCtrlPanel(wx.Panel):
 
     def StopClicked(self, event):
         msgData = network.messages.getMessage(PLAYER_STOP)
+        network.udpconnector.sendMessage(msgData, self.host)
+
+    def PauseClicked(self, event):
+        msgData = network.messages.getMessage(PLAYER_PAUSE)
         network.udpconnector.sendMessage(msgData, self.host)
 
 

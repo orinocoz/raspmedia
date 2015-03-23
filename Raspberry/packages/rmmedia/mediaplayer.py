@@ -11,6 +11,7 @@ playerState = PLAYER_STOPPED
 cwd = os.getcwd()
 mediaPath = cwd + '/media/'
 mp_thread = None
+qt_proc = None
 identifyFlag = False
 previousState = None
 filenumber = None
@@ -144,15 +145,31 @@ class MediaPlayer(threading.Thread):
                     interval += 1
                     self.pauseevent.wait()
 
+    def processImagesWithQtViewer(self):
+        global playerState
+        global qt_proc
+        imgInterval = str(self.config['image_interval'])
+        blendInterval = str(self.config['image_blend_interval'])
+        loops = 0
+        if self.config['repeat']:
+            loops = 1
+        viewerState = ""
+        qt_proc = subprocess.Popen(["/home/pi/RPiTest2/bin/RPiTest2", "--interval", imgInterval, "--blend", blendInterval, "--loops", str(loops)], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+
+
 
     def processImagesOnly(self):
         global playerState
         print "Processing only images."
+        '''
         if self.config['repeat']:
             self.fbiImageLoop()
         else:
             self.processImagesOnce()
             stop()
+        '''
+        self.processImagesWithQtViewer()
+        stop()
 
     def processVideosOnce(self):
         global playerState
@@ -494,10 +511,14 @@ def stop():
     # processtool.killProcesses('fbi')
     
     # stop omx player instance if running
-    #subprocess.call([cwd + '/scripts/quitplay.sh'])
     if videoPlaying:
         subprocess.call(['/home/pi/raspmedia/Raspberry/scripts/dbuscontrol.sh', 'stop'])
         videoPlaying = False
+
+    # stop qt viewer if currently running
+    if not qt_proc == None:
+        qt_proc.kill()
+        qt_proc = None
 
 def pause():
     global videoPlaying

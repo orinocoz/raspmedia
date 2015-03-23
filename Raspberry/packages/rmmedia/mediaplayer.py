@@ -154,7 +154,7 @@ class MediaPlayer(threading.Thread):
         if self.config['repeat']:
             loops = 1
         viewerState = ""
-        qt_proc = subprocess.Popen(["/home/pi/RPiTest2/bin/RPiTest2", "--interval", imgInterval, "--blend", blendInterval, "--loops", str(loops)], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+        qt_proc = subprocess.Popen(["/home/pi/RPiTest2", "--interval", imgInterval, "--blend", blendInterval, "--loops", str(loops)], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
 
 
 

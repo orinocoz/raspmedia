@@ -168,6 +168,7 @@ class MediaPlayer(threading.Thread):
         print "CMD: " + str(curCmd)
         qt_proc = subprocess.Popen(["/home/pi/RPiTest2", "--interval", str(imgInterval), "--blend", str(blendInterval), "--loops", str(loops)])
         qt_proc.communicate()
+        qt_proc = None
 
 
 
@@ -464,19 +465,22 @@ def deleteFiles(files):
 
 def setQtViewerProcessReference():
     global qt_psproc
+    qt_psproc = None
     ids = psutil.pids()
     viewerId = None
     for curId in ids:
         try:
             p = psutil.Process(curId)
-            print p.name()
             if p.name() == "RPiTest2":
                 viewerId = curId
         except:
             print "No process for id " + str(curId)
     if not viewerId == None:
         print "Getting PSUTIL process reference to PID " + str(viewerId)
-        qt_psproc = psutil.Process(viewerId)
+        try:
+            qt_psproc = psutil.Process(viewerId)
+        except:
+            qt_psproc = None
 
 def isImage(filename):
     return filename.endswith((SUPPORTED_IMAGE_EXTENSIONS))
@@ -540,6 +544,10 @@ def stop():
     global videoPlaying
     global qt_proc
     global qt_psproc
+    # toggle pause if currently paused
+    if not mp_thread.pauseevent.is_set():
+        pause()
+    # stop player
     playerState = PLAYER_STOPPED
     mp_thread.runevent.clear()
     # check for fbi and omxplayer processes and terminate them
@@ -551,11 +559,13 @@ def stop():
         videoPlaying = False
 
     # stop qt viewer if currently running
-    #setQtViewerProcessReference()
-    if not qt_proc == None:
-        #qt_psproc.terminate()
-        qt_proc.kill()
+    setQtViewerProcessReference()
+    if not qt_psproc == None:
+        qt_psproc.terminate()
+        qt_psproc = None
         qt_proc = None
+        #qt_proc.kill()
+        #qt_proc = None
 
 def pause():
     global videoPlaying

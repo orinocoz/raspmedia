@@ -8,6 +8,21 @@ from pyomxplayer import OMXPlayer
 import ImageIdentifier
 import psutil
 
+'''
+    QT_VIEWER: refers to RaspMedia's custom image viewer based on Qt. If the executable of the custom Qt Image Viewer is present,
+    RaspMedia Player will use it for the presentation of images. As Qt uses hardware acceleration of the GPU using this viewer allows
+    smooth transitions between the images and a much more precise processing of the exact image interval.
+
+    To be able to use the custom Qt Image Viewer an RaspMedia image with a cross compiled version of Qt5.2 is required for the executable
+    to be usable. For further information, pricings and availability of images for this advanced version of RaspMedia Player contact
+    software@multimedia-installationen.at
+    The default process of getting such a setup up and running is either to flash a prepared Raspbian Image with the required Qt5.2 modules
+    pre-installed and installing RaspMedia with the installation script as usual or to flash a prepared RaspMedia image with the required
+    Qt5.2 modules and RaspMedia pre-installed ready for use.
+'''
+QT_VIEWER = "/home/pi/RPiTest2"
+
+# mediaplayer helper variables
 playerState = PLAYER_STOPPED
 cwd = os.getcwd()
 mediaPath = cwd + '/media/'
@@ -102,56 +117,56 @@ class MediaPlayer(threading.Thread):
         self.mediaPath = mediaPath
 
     def processImagesOnce(self):
-        '''
-        global playerState
-        #imgInterval = str(self.config['image_interval'])
-        imgInterval = self.config["image_interval"]-1
-        blendInterval = str(self.config['image_blend_interval'])
-        #imgCmdList = ["sudo","fbi","-noverbose", "--once", "-readahead", "-t", imgInterval, '-a', "-blend", blendInterval, "-T","2"]
-        #imgCmdList = ["sudo","fbi","-noverbose", "-cachemem", "0", "-t", "1", '-a', "-blend", blendInterval, "-T","2", cwd + '/img_al1.jpg', cwd + '/img_al2.jpg', cwd + '/img_al3.jpg']
-        files = sorted(self.allImages())
-        
-        # loop through image files once
-        for file in files:
-            # link new image
-            if self.runevent.is_set():
-                # image interval passed, player did not change into stopped state --> link next image
-                subprocess.call(["ln", "-s", "-f", os.path.join(self.mediaPath, file), cwd + '/img_al1.jpg'])
-                time.sleep(0.7)
-            # wait image interval
-            interval = 0
-            while self.runevent.is_set() and interval < imgInterval:
-                time.sleep(1)
-                interval += 1
-                self.pauseevent.wait()
-        '''
-        self.processImagesWithQtViewer(0)
-
-
-    def fbiImageLoop(self):
-        '''
-        global playerState
-        imgInterval = self.config['image_interval']
-        blendInterval = str(self.config['image_blend_interval'])
-        # imgCmdList = ["sudo","fbi","-noverbose", "-readahead", "-t", imgInterval, '-a', "-blend", blendInterval, "-T","2"]
-        #imgCmdList = ["sudo","fbi","-noverbose", "-cachemem", "0", "-t", "1", '-a', "-blend", blendInterval, "-T","2", cwd + '/img_al1.jpg', cwd + '/img_al2.jpg', cwd + '/img_al3.jpg']
-        files = sorted(self.allImages())
-        
-        # loop over images as long as runevent is set
-        while self.runevent.is_set():
+        if not os.path.isfile(QT_VIEWER):
+            global playerState
+            #imgInterval = str(self.config['image_interval'])
+            imgInterval = self.config["image_interval"]-1
+            blendInterval = str(self.config['image_blend_interval'])
+            #imgCmdList = ["sudo","fbi","-noverbose", "--once", "-readahead", "-t", imgInterval, '-a', "-blend", blendInterval, "-T","2"]
+            #imgCmdList = ["sudo","fbi","-noverbose", "-cachemem", "0", "-t", "1", '-a', "-blend", blendInterval, "-T","2", cwd + '/img_al1.jpg', cwd + '/img_al2.jpg', cwd + '/img_al3.jpg']
+            files = sorted(self.allImages())
+            
+            # loop through image files once
             for file in files:
+                # link new image
                 if self.runevent.is_set():
                     # image interval passed, player did not change into stopped state --> link next image
                     subprocess.call(["ln", "-s", "-f", os.path.join(self.mediaPath, file), cwd + '/img_al1.jpg'])
-                    time.sleep(0.7)
+                    time.sleep(1)
                 # wait image interval
                 interval = 0
-                while self.runevent.is_set() and interval < imgInterval:
+                while self.runevent.is_set() and interval <= imgInterval:
                     time.sleep(1)
                     interval += 1
                     self.pauseevent.wait()
-        '''
-        self.processImagesWithQtViewer(1)
+        else:
+            self.processImagesWithQtViewer(0)
+
+
+    def fbiImageLoop(self):
+        if not os.path.isfile(QT_VIEWER):
+            global playerState
+            imgInterval = self.config['image_interval']
+            blendInterval = str(self.config['image_blend_interval'])
+            # imgCmdList = ["sudo","fbi","-noverbose", "-readahead", "-t", imgInterval, '-a', "-blend", blendInterval, "-T","2"]
+            #imgCmdList = ["sudo","fbi","-noverbose", "-cachemem", "0", "-t", "1", '-a', "-blend", blendInterval, "-T","2", cwd + '/img_al1.jpg', cwd + '/img_al2.jpg', cwd + '/img_al3.jpg']
+            files = sorted(self.allImages())
+            
+            # loop over images as long as runevent is set
+            while self.runevent.is_set():
+                for file in files:
+                    if self.runevent.is_set():
+                        # image interval passed, player did not change into stopped state --> link next image
+                        subprocess.call(["ln", "-s", "-f", os.path.join(self.mediaPath, file), cwd + '/img_al1.jpg'])
+                        time.sleep(1)
+                    # wait image interval
+                    interval = 0
+                    while self.runevent.is_set() and interval <= imgInterval:
+                        time.sleep(1)
+                        interval += 1
+                        self.pauseevent.wait()
+        else:
+            self.processImagesWithQtViewer(1)
 
     def processImagesWithQtViewer(self, loops=None):
         global playerState
@@ -164,9 +179,9 @@ class MediaPlayer(threading.Thread):
             if self.config['repeat']:
                 loops = 1
         viewerState = ""
-        curCmd = ["/home/pi/RPiTest2", "--interval", str(imgInterval), "--blend", str(blendInterval), "--loops", str(loops)]
+        curCmd = [QT_VIEWER, "--interval", str(imgInterval), "--blend", str(blendInterval), "--loops", str(loops)]
         print "CMD: " + str(curCmd)
-        qt_proc = subprocess.Popen(["/home/pi/RPiTest2", "--interval", str(imgInterval), "--blend", str(blendInterval), "--loops", str(loops)])
+        qt_proc = subprocess.Popen(curCmd)
         qt_proc.communicate()
         qt_proc = None
 
@@ -175,14 +190,14 @@ class MediaPlayer(threading.Thread):
     def processImagesOnly(self):
         global playerState
         print "Processing only images."
-        '''
-        if self.config['repeat']:
-            self.fbiImageLoop()
+        if not os.path.isfile(QT_VIEWER):
+            if self.config['repeat']:
+                self.fbiImageLoop()
+            else:
+                self.processImagesOnce()
+                stop()
         else:
-            self.processImagesOnce()
-            stop()
-        '''
-        self.processImagesWithQtViewer()
+            self.processImagesWithQtViewer()
         stop()
 
     def processVideosOnce(self):

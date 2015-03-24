@@ -37,6 +37,15 @@ sudo apt-get -y install mplayer;
 # install mediainfo library
 sudo apt-get -y install mediainfo;
 
+# install pip and psutil
+echo "Installing package installer PIP...";
+wget https://bootstrap.pypa.io/get-pip.py;
+sudo python get-pip.py;
+echo "Installing GCC and Python Headers...";
+sudo apt-get -y install gcc python-dev;
+echo "Installing PSUTIL...";
+sudo pip install psutil;
+
 echo "Installing PyOMXPlayer...";
 # fetch files for pyomxplayer
 cd /home/pi;

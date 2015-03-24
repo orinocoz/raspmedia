@@ -168,7 +168,7 @@ class MediaPlayer(threading.Thread):
         else:
             self.processImagesWithQtViewer(1)
 
-    def processImagesWithQtViewer(self, loops=None):
+    def processImagesWithQtViewer(self, loops=None, images=None):
         global playerState
         global qt_proc, qt_psproc
         imgInterval = self.config['image_interval'] * 1000
@@ -180,6 +180,10 @@ class MediaPlayer(threading.Thread):
                 loops = 1
         viewerState = ""
         curCmd = [QT_VIEWER, "--interval", str(imgInterval), "--blend", str(blendInterval), "--loops", str(loops)]
+        if not images == None:
+            for img in images:
+                curCmd.append("--file")
+                curCmd.append(img)
         print "CMD: " + str(curCmd)
         qt_proc = subprocess.Popen(curCmd)
         qt_proc.communicate()
@@ -300,22 +304,46 @@ class MediaPlayer(threading.Thread):
     def processAllFilesOnce(self):
         global playerState
         imgCmdList = ["sudo","fbi","--once","-noverbose","-readahead","-T","2"]
+        imgFiles = []
         files = self.allMediaFiles()
         files.sort()
-        for file in files:
-            # check file extension
-            if isImage(file) and playerState == PLAYER_STARTED:
-                # process image file
-                curImgCmd = imgCmdList[:]
-                curImgCmd.append(self.mediaPath + file)
-                subProc = subprocess.Popen(curImgCmd)
-                # sleep while image is shown, append a second for loading time
-                #print "Showing image " + file + " for " + str(self.config['image_interval']) + " seconds"
-                time.sleep(self.config['image_interval'] + 2    )
-                subProc.kill()
-                subProc.wait()
-            elif isVideo(file):
-                self.playVideo(file)
+        if not os.path.isfile(QT_VIEWER):
+            for file in files:
+                # check file extension
+                if isImage(file) and playerState == PLAYER_STARTED:
+                    # process image file
+                    curImgCmd = imgCmdList[:]
+                    curImgCmd.append(self.mediaPath + file)
+                    subProc = subprocess.Popen(curImgCmd)
+                    # sleep while image is shown, append a second for loading time
+                    #print "Showing image " + file + " for " + str(self.config['image_interval']) + " seconds"
+                    time.sleep(self.config['image_interval'] + 2    )
+                    subProc.kill()
+                    subProc.wait()
+                elif isVideo(file):
+                    self.playVideo(file)
+        else:
+            prevWasImage = False
+            count = 0
+            for file in files:
+                count = count + 1
+                if isImage(file) and playerState == PLAYER_STARTED:
+                    if prevWasImage:
+                        imgFiles.append(file)
+                    else:
+                        imgFiles = []
+                        imgFiles.append(file)
+                    prevWasImage = True
+                    if count == len(files):
+                        # end of list --> show images
+                        self.processImagesWithQtViewer(0, imgFiles)
+                elif isVideo(file):
+                    if prevWasImage:
+                        # process previously looped images
+                        self.processImagesWithQtViewer(0, imgFiles)
+                    prevWasImage = False
+                    self.playVideo(file)
+
 
     def processAllFiles(self):
         global playerState

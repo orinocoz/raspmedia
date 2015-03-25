@@ -27,6 +27,7 @@ def RaspMediaFilesPresent():
 def CopyMediaFiles():
     print "Copying files from USB to RaspMedia Player"
     clear = True
+    os.system("fbi -T 1 -a -noverbose /home/pi/raspmedia/Raspberry/usbloading.jpg")
     # search for update indicator file
     for file in os.listdir(USB_MEDIA_PATH):
         if not file.endswith((SUPPORTED_IMAGE_EXTENSIONS)) and not file.endswith((SUPPORTED_VIDEO_EXTENSIONS)) and file.startswith('update'):
@@ -219,7 +220,7 @@ def StartupRoutine():
     print ""
 
     time.sleep(2)
-
+    os.system("sudo killall fbi > /dev/null")
     os.system("sudo python rasp-mediaplayer.py > /dev/null")
 
 

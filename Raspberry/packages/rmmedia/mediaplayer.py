@@ -3,6 +3,7 @@
 import os, platform, threading, time, subprocess, re
 from packages.rmutil import processtool
 from packages.rmconfig import configtool
+from packages.rmnetwork import udplocalforwarder
 from constants import *
 from pyomxplayer import OMXPlayer
 import ImageIdentifier
@@ -168,7 +169,7 @@ class MediaPlayer(threading.Thread):
         else:
             self.processImagesWithQtViewer(1)
 
-    def processImagesWithQtViewer(self, loops=None, images=None):
+    def processImagesWithQtViewer(self, loops=None, images=None, number=None):
         global playerState
         global qt_proc, qt_psproc
         imgInterval = self.config['image_interval'] * 1000
@@ -184,11 +185,13 @@ class MediaPlayer(threading.Thread):
             for img in images:
                 curCmd.append("--file")
                 curCmd.append(img)
+        elif not number == None:
+            curCmd.append("--singleFile")
+            curCmd.append(str(number))
         print "CMD: " + str(curCmd)
         qt_proc = subprocess.Popen(curCmd)
         qt_proc.communicate()
         qt_proc = None
-
 
 
     def processImagesOnly(self):
@@ -381,14 +384,23 @@ class MediaPlayer(threading.Thread):
                             subprocess.call(['/home/pi/raspmedia/Raspberry/scripts/dbuscontrol.sh', 'stop'])
                             videoPlaying = False
                     curFile = newFile
-                if curFile in self.allImages():
-                    # selected file is image --> show with fbi
-                    filePath = self.mediaPath + curFile
-                    # link to new image to show
-                    subprocess.call(["ln", "-s", "-f", os.path.join(self.mediaPath, curFile), cwd + '/img_al1.jpg'])
-                    # check again for a file change in a second
-                    time.sleep(1)
-                elif curFile in self.allVideos():
+                    if curFile in self.allImages() and not os.path.isfile(QT_VIEWER):
+                        # selected file is image and qt viewer not available --> show with fbi
+                        filePath = self.mediaPath + curFile
+                        # link to new image to show
+                        subprocess.call(["ln", "-s", "-f", os.path.join(self.mediaPath, curFile), cwd + '/img_al1.jpg'])
+                        # check again for a file change in a second
+                        time.sleep(1)
+                    elif curFile in self.allImages() and os.path.isfile(QT_VIEWER):
+                        # process single image with qt viewer
+                        imgIndex = getImageIndex(filenumber)
+                        if qt_proc == None:
+                            # start qt viewer in singleFile mode
+                            self.processImagesWithQtViewer(1, None, imgIndex)
+                        else:
+                            # pass new number to qt viewer
+                            udplocalforwarder.forwardValueCommand(PLAYER_SET_FILENUMBER, imgIndex)
+                if curFile in self.allVideos():
                     # video command is blocking --> next check/switch when video is completely played
                     self.playVideo(curFile)
             else:
@@ -448,7 +460,7 @@ class MediaPlayer(threading.Thread):
                     stop()
         else:
             # filenumber for processing a single file is set, only handle this single file if available
-            self.processSingleFile()
+            self.processSingleFile()                
 
         # set player state to stopped as processing is done at this point
         playerState = PLAYER_STOPPED
@@ -662,11 +674,25 @@ def setState(state):
     elif state == 3:
         pause()
 
+def getImageIndex(fileIndex):
+    files = sorted(getMediaFileList())
+    print files
+    fileName = files[fileIndex]
+    index = 0
+    for file in files:
+        if file == fileName:
+            print "%d is image %d" % (fileIndex, index)
+            return index
+        else:
+            if file in getImageFilelist():
+                index += 1
+    return -1;
+
 def setMediaFileNumber(num):
     global playerState
     global filenumber
     restart = False
-    
+    files = sorted(getMediaFileList())
     time.sleep(1)
     if num == -1 or filenumber == None:
         # stop player for resetting or initially setting file number
@@ -675,10 +701,29 @@ def setMediaFileNumber(num):
             stop()
         if num == -1:
             filenumber = None
+            udplocalforwarder.forwardFlagCommand(PLAYER_CLEAR_FILENUMBER)
         else:
             filenumber = num
+            if files[filenumber] in getImageFilelist():
+                if not qt_proc == None:
+                    # qt viewer is running and currently processing --> simply pass new index
+                    imgIndex = getImageIndex(filenumber)
+                    udplocalforwarder.forwardValueCommand(PLAYER_SET_FILENUMBER, imgIndex)
     else:
         filenumber = num
+        if files[filenumber] in getImageFilelist():
+            if not qt_proc == None:
+                # qt viewer is running and currently processing --> simply pass new index
+                imgIndex = getImageIndex(filenumber)
+                udplocalforwarder.forwardValueCommand(PLAYER_SET_FILENUMBER, imgIndex)
+            else:
+                # qt _proc = None --> currently processed file is video --> stop
+                restart = True
+                stop()
+        else:
+            if not qt_proc == None:
+                restart = True
+                stop()
     if restart:
         time.sleep(1)
         play()

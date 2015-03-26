@@ -46,6 +46,17 @@ FILE_DATA_REQUEST = 0x20
 PLAYER_PAUSE = 0x21
 DISK_INFO_REQUEST = 0x22
 
+# flags for prev/next messages
+PLAYER_PREV = 0x30
+PLAYER_NEXT = 0x31
+PLAYER_SET_FILENUMBER = 0x32
+PLAYER_CLEAR_FILENUMBER = 0x33
+
+# flags for forwarded messages to Qt Image Viewer
+FWD_PREV = 0x00
+FWD_NEXT = 0x01
+FWD_NUM = 0x02
+
 # flag for message to play file number
 PLAYER_START_FILENUMBER = 0xb0
 

@@ -136,6 +136,13 @@ def interpret(msg_data, sender_ip=None):
             mediaplayer.startFileNumber(number)
         elif flag == DISK_INFO_REQUEST:
             result = flag
+        elif flag == PLAYER_SET_FILENUMBER:
+            result = flag
+            mediaNumber, data = readInt(data)
+            mediaplayer.setMediaFileNumber(mediaNumber)
+        elif flag == PLAYER_CLEAR_FILENUMBER:
+            result = flag
+            mediaplayer.setMediaFileNumber(-1)
         else:
             result = INTERPRETER_ERROR
             msg = "Unknown command flag"

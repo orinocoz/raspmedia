@@ -3,6 +3,7 @@ import packages.rmutil as rmutil
 from packages.rmgui import *
 from packages.rmnetwork.constants import *
 from packages.lang.Localizer import *
+import FileControlDialog as fControl
 import os, sys, platform, ast, time, threading, shutil
 
 import wx
@@ -43,7 +44,19 @@ class RaspMediaCtrlPanel(wx.Panel):
         self.pageDataLoading = False
         self.remoteListLoading = False
         self.shiftDown = False
+        self.remoteFiles = []
+
+        sc_filectrl_id = wx.NewId()
+        self.Bind(wx.EVT_MENU, self.ShowFileControl, id=sc_filectrl_id)
+
+        self.accel_tbl = wx.AcceleratorTable([(wx.ACCEL_CTRL, ord('K'), sc_filectrl_id)])
+        self.SetAcceleratorTable(self.accel_tbl)
+
         self.Initialize()
+
+    def ShowFileControl(self, event=None):
+        dlg = fControl.FileControlDialog(self,-1,"Show single File", self.host, self.remoteFiles)
+        dlg.ShowModal()
 
     def OnKeyDown(self, event):
         keycode = event.GetKeyCode()
@@ -138,15 +151,11 @@ class RaspMediaCtrlPanel(wx.Panel):
 
         # player name and address
         nameSizer = wx.BoxSizer()
-        nameLabel = wx.StaticText(self,-1,label=tr("player_name")+": ")
-        self.playerNameLabel = wx.StaticText(self,-1,label="", size = (130,nameLabel.GetSize()[1]))
-        nameSizer.Add(nameLabel)
+        self.playerNameLabel = wx.StaticText(self,-1,label="")
         nameSizer.Add(self.playerNameLabel)
 
         addrSizer = wx.BoxSizer()
-        addrLabel = wx.StaticText(self,-1,label=tr("ip_address")+": ")
         playerAddr = wx.StaticText(self,-1,label=self.host)
-        addrSizer.Add(addrLabel)
         addrSizer.Add(playerAddr)
 
         playerBoxSizer.Add(nameSizer,flag=wx.ALL,border=5)
@@ -297,8 +306,10 @@ class RaspMediaCtrlPanel(wx.Panel):
         # print "UPDATING REMOTE FILELIST UI..."
         self.remoteList.DeleteAllItems()
         files.sort()
+        self.remoteFiles = []
         for file in reversed(files):
             if not file.startswith('.') and '.' in file:
+                self.remoteFiles.append(file)
                 self.remoteList.InsertStringItem(0, file)
 
     def UpdateConfigUI(self, config, isDict=False):

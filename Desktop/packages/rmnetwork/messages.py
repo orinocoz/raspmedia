@@ -58,7 +58,6 @@ def getConfigUpdateMessage(key, value):
 		appendString(usgData, value)
 
 	size = 6 + len(usgData)
-
 	appendInt(data, size)
 	appendShort(data, CONFIG_UPDATE)
 	appendBytes(data, usgData)

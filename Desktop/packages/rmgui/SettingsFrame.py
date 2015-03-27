@@ -56,8 +56,10 @@ class SettingsFrame(wx.Frame):
         self.cbRepeat = wx.CheckBox(self, -1, tr("repeat"))
 
         # interval, player name and ip
-        intervalLabel = wx.StaticText(self,-1,label=tr("image_interval")+":")
+        intervalLabel = wx.StaticText(self,-1,label=tr("image_interval")+" (s):")
         self.imgIntervalLabel = wx.StaticText(self,-1,label="")
+        blendInterval = wx.StaticText(self,-1,label="Blend Interval (ms):")
+        self.blendIntervalLabel = wx.StaticText(self,-1,label="")
         nameLabel = wx.StaticText(self,-1,label=tr("player_name")+":")
         self.playerNameLabel = wx.StaticText(self,-1,label="")
         addrLabel = wx.StaticText(self,-1,label=tr("ip_address")+":")
@@ -68,6 +70,13 @@ class SettingsFrame(wx.Frame):
 
         self.editInterval = wx.Button(self,-1,label="...",size=(27,25))
         self.editName = wx.Button(self,-1,label="...",size=(27,25))
+        self.editBlend = wx.Button(self,-1,label="...",size=(27,25))
+
+        # combo box for available transitions
+        blendTypeLabel = wx.StaticText(self,-1,label="Blend Type:")
+        self.transitions = ['Blend', 'Zoom', 'Slide', 'Flip', 'Flip Vertical', 'Flip Diagonal']
+        self.combo = wx.ComboBox(self, -1, choices=self.transitions, size = (150,25), style = wx.CB_READONLY)
+        self.Bind(wx.EVT_COMBOBOX, self.TransitionSelected, self.combo)
 
         # horizontal divider line
         line = wx.StaticLine(self,-1,size=(260,2))
@@ -79,6 +88,7 @@ class SettingsFrame(wx.Frame):
         self.cbRepeat.SetName('repeat')
         self.editInterval.SetName('btn_image_interval')
         self.editName.SetName('btn_player_name')
+        self.editBlend.SetName('btn_blend_interval')
         updateBtn.SetName('btn_update')
         setupWifi.SetName('btn_setup_wifi')
 
@@ -89,6 +99,7 @@ class SettingsFrame(wx.Frame):
         self.Bind(wx.EVT_CHECKBOX, self.CheckboxToggled, self.cbRepeat)
         self.Bind(wx.EVT_BUTTON, self.ButtonClicked, self.editInterval)
         self.Bind(wx.EVT_BUTTON, self.ButtonClicked, self.editName)
+        self.Bind(wx.EVT_BUTTON, self.ButtonClicked, self.editBlend)
         self.Bind(wx.EVT_BUTTON, self.ButtonClicked, updateBtn)
         self.Bind(wx.EVT_BUTTON, self.ButtonClicked, setupWifi)
 
@@ -99,14 +110,19 @@ class SettingsFrame(wx.Frame):
         self.configSizer.Add(intervalLabel, (3,0), flag=wx.ALIGN_CENTER_VERTICAL | wx.LEFT, border = 5)
         self.configSizer.Add(self.imgIntervalLabel, (3,1), flag=wx.ALIGN_CENTER_VERTICAL)
         self.configSizer.Add(self.editInterval, (3,3))
-        self.configSizer.Add(nameLabel, (4,0), flag=wx.ALIGN_CENTER_VERTICAL | wx.LEFT, border = 5)
-        self.configSizer.Add(self.playerNameLabel, (4,1), flag=wx.ALIGN_CENTER_VERTICAL)
-        self.configSizer.Add(self.editName, (4,3))
-        self.configSizer.Add(addrLabel, (5,0), flag = wx.ALIGN_CENTER_VERTICAL | wx.LEFT | wx.BOTTOM, border = 5)
-        self.configSizer.Add(playerAddr, (5,1), flag = wx.ALIGN_CENTER_VERTICAL | wx.BOTTOM, border = 5)
+        self.configSizer.Add(blendInterval, (4,0), flag=wx.ALIGN_CENTER_VERTICAL | wx.LEFT, border = 5)
+        self.configSizer.Add(self.blendIntervalLabel, (4,1), flag=wx.ALIGN_CENTER_VERTICAL)
+        self.configSizer.Add(self.editBlend, (4,3))
+        self.configSizer.Add(blendTypeLabel, (5,0), flag=wx.ALIGN_CENTER_VERTICAL | wx.LEFT, border = 5)
+        self.configSizer.Add(self.combo, (5,1), span=(1,2), flag=wx.ALIGN_CENTER_VERTICAL)
+        self.configSizer.Add(nameLabel, (6,0), flag=wx.ALIGN_CENTER_VERTICAL | wx.LEFT, border = 5)
+        self.configSizer.Add(self.playerNameLabel, (6,1), flag=wx.ALIGN_CENTER_VERTICAL)
+        self.configSizer.Add(self.editName, (6,3))
+        self.configSizer.Add(addrLabel, (7,0), flag = wx.ALIGN_CENTER_VERTICAL | wx.LEFT | wx.BOTTOM, border = 5)
+        self.configSizer.Add(playerAddr, (7,1), flag = wx.ALIGN_CENTER_VERTICAL | wx.BOTTOM, border = 5)
         self.configSizer.Add(setupWifi, (0,4), flag = wx.ALL, border = 5)
         self.configSizer.Add(updateBtn, (1,4), flag = wx.ALL, border = 5)
-        self.configSizer.Add(line, (2,0), span=(1,5), flag=wx.TOP | wx.BOTTOM, border=5)
+        self.configSizer.Add(line, (2,0), span=(1,6), flag=wx.TOP | wx.BOTTOM, border=5)
 
 
     def UpdateUI(self, config, isDict=False):
@@ -115,12 +131,27 @@ class SettingsFrame(wx.Frame):
         else:
             configDict = ast.literal_eval(config)
         self.config = configDict
+        if not "blend_type" in configDict:
+            configDict["blend_type"] = "Blend"
+        self.SelectTransition(configDict['blend_type'])
         self.cbImgEnabled.SetValue(configDict['image_enabled'])
         self.cbVidEnabled.SetValue(configDict['video_enabled'])
         self.cbRepeat.SetValue(configDict['repeat'])
         self.cbAutoplay.SetValue(configDict['autoplay'])
         self.imgIntervalLabel.SetLabel(str(configDict['image_interval']))
+        self.blendIntervalLabel.SetLabel(str(configDict['image_blend_interval']))
         self.playerNameLabel.SetLabel(str(configDict['player_name']))
+
+    def SelectTransition(self, transition):
+        index = self.transitions.index(transition)
+        self.combo.SetSelection(index)
+
+    def TransitionSelected(self, event):
+        blendType = self.combo.GetValue()
+        msgData = network.messages.getConfigUpdateMessage("blend_type", str(blendType))
+        network.udpconnector.sendMessage(msgData, self.host)
+        time.sleep(0.2)
+        self.LoadConfig()
 
     def LoadConfig(self):
         Publisher.subscribe(self.UpdateUI, 'config')
@@ -152,6 +183,21 @@ class SettingsFrame(wx.Frame):
                     self.LoadConfig()
                 except Exception, e:
                     error = wx.MessageDialog(self, tr("enter_valid_number"), tr("invalid_interval"), wx.OK | wx.ICON_EXCLAMATION)
+                    error.ShowModal()
+
+            dlg.Destroy()
+        elif button.GetName() == 'btn_blend_interval':
+            dlg = wx.TextEntryDialog(self, tr("new_interval")+":", "Blend Interval", self.blendIntervalLabel.GetLabel())
+            if dlg.ShowModal() == wx.ID_OK:
+                try:
+                    newBlendInterval = int(dlg.GetValue())
+                    # self.imgIntervalLabel.SetLabel(str(newBlendInterval))
+                    msgData = network.messages.getConfigUpdateMessage("image_blend_interval", newBlendInterval)
+                    network.udpconnector.sendMessage(msgData, self.host)
+                    time.sleep(0.2)
+                    self.LoadConfig()
+                except Exception, e:
+                    error = wx.MessageDialog(self, tr("enter_valid_number"), "Blend Interval", wx.OK | wx.ICON_EXCLAMATION)
                     error.ShowModal()
 
             dlg.Destroy()

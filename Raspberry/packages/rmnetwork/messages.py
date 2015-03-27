@@ -44,6 +44,7 @@ def appendArg(data, type, arg):
 def getConfigMessage():
     config = configtool.readConfig()
     configStr = str(config)
+    print "Sending config: " + configStr
     confBytes = bytearray(configStr)
 
     data = bytearray()

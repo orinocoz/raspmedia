@@ -35,6 +35,7 @@ def initConfig():
         config["shuffle"] = 0
         config["repeat"] = 1
         config["userPlaylist"] = ""
+        config["blend_type"] = "Blend"
         writeConfigFile()
     return config
 

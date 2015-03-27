@@ -21,8 +21,8 @@ import psutil
     pre-installed and installing RaspMedia with the installation script as usual or to flash a prepared RaspMedia image with the required
     Qt5.2 modules and RaspMedia pre-installed ready for use.
 '''
-QT_VIEWER = "/home/pi/RPiTest2"
-
+#QT_VIEWER = "/home/pi/RPiTest2"
+QT_VIEWER = "/home/pi/raspmedia/Qt/RPiQtImageViewer"
 # mediaplayer helper variables
 playerState = PLAYER_STOPPED
 cwd = os.getcwd()
@@ -173,14 +173,16 @@ class MediaPlayer(threading.Thread):
         global playerState
         global qt_proc, qt_psproc
         imgInterval = self.config['image_interval'] * 1000
-        #blendInterval = str(self.config['image_blend_interval'])
-        blendInterval = 1000
+        blendInterval = str(self.config['image_blend_interval'])
+        blendType = "Blend"
+        if "blend_type" in self.config:
+            blendType = str(self.config['blend_type'])
         if loops == None:
             loops = 0
             if self.config['repeat']:
                 loops = 1
         viewerState = ""
-        curCmd = [QT_VIEWER, "--interval", str(imgInterval), "--blend", str(blendInterval), "--loops", str(loops)]
+        curCmd = [QT_VIEWER, "--interval", str(imgInterval), "--blend", str(blendInterval), "--blendType", blendType, "--loops", str(loops)]
         if not images == None:
             for img in images:
                 curCmd.append("--file")
@@ -469,6 +471,10 @@ class MediaPlayer(threading.Thread):
         self.config = configtool.readConfig()
 
 
+def qtViewerActive():
+    if qt_proc == None:
+        return False
+    return True
 
 def getMediaFileList():
     global mediaPath

@@ -15,6 +15,11 @@ def forwardValueCommand(cmdNum, value):
     msgData = appendShort(msgData, value)
     __sendMessageToLocalhost(msgData)
 
+def forwardNewBlendType(cmdNum, blendTypeStr):
+    transitions = ['Blend', 'Zoom', 'Slide', 'Flip', 'Flip Vertical', 'Flip Diagonal']
+    num = transitions.index(blendTypeStr)
+    forwardValueCommand(cmdNum, num)
+
 def __sendMessageToLocalhost(data):
     global sock
     host = "127.0.0.1"

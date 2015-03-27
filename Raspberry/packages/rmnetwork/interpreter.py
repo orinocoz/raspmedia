@@ -2,6 +2,7 @@ import os, threading, socket, time
 from constants import *
 from packages.rmmedia import mediaplayer
 from packages.rmconfig import configtool
+from packages.rmnetwork import udplocalforwarder
 import GroupManager
 
 
@@ -213,10 +214,14 @@ def readConfigUpdate(data):
     print "KEY: ", key
     print "VALUE: ", value
     configtool.setConfigValue(key, value)
+    if key == "blend_type":
+        # pass blendType directly to qt viewer if currently running
+        if mediaplayer.qtViewerActive():
+            udplocalforwarder.forwardNewBlendType(CONFIG_UPDATE, value)
     return data
 
 def readConfigValue(data, key):
-    if key == 'image_interval' or key == 'image_enabled' or key == 'video_enabled' or key == 'shuffle' or key == 'repeat' or key == 'autoplay':
+    if key == 'image_interval' or key == 'image_blend_interval' or key == 'image_enabled' or key == 'video_enabled' or key == 'shuffle' or key == 'repeat' or key == 'autoplay':
         # integer config value
         value, data = readInt(data)
     else:

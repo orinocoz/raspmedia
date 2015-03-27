@@ -532,7 +532,7 @@ def setQtViewerProcessReference():
     for curId in ids:
         try:
             p = psutil.Process(curId)
-            if p.name() == "RPiTest2":
+            if p.name() == "RPiQtImageViewer":
                 viewerId = curId
         except:
             print "No process for id " + str(curId)
